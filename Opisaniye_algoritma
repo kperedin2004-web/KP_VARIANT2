@@ -1,0 +1,28 @@
+void main(void) {
+    // 1.1. Настройка тактового генератора
+    OSCCON = 0x72;  // 8 МГц тактовой частоты
+    
+    // 1.2. Конфигурация портов ввода-вывода
+    TRISB = 0x00;   // PORTB как выходы (ШИМ сигналы)
+    TRISCbits.TRISC6 = 1;  // RX вход
+    TRISCbits.TRISC7 = 0;  // TX выход
+    
+    // 1.3. Инициализация UART
+    UART_Init(9600);  // Скорость 9600 бод
+    
+    // 1.4. Настройка ШИМ модулей
+    PWM_Init();
+    
+    // 1.5. Настройка прерываний
+    INTCON = 0xC0;  // Глобальные и периферийные прерывания
+    PIE1bits.RCIE = 1;  // Разрешить прерывание UART приема
+    
+    // 1.6. Инициализация переменных состояния
+    current_red = current_green = current_blue = 0;
+    target_red = target_green = target_blue = 0;
+    color_update_flag = 0;
+    uart_state = WAIT_START;
+    
+    // 1.7. Запуск таймеров
+    Timer1_Init();  // Для плавных переходов
+}
