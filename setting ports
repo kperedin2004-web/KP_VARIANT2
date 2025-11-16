@@ -1,0 +1,43 @@
+ НАСТРОЙКА ПОРТОВ ВВОДА/ВЫВОДА для ШИМ (RGB каналы) 
+void PIN_Init(void)
+{
+    
+    
+    // RED канал:    RC1 
+    TRISCbits.TRISC1 = 0;   // 
+    LATCbits.LATC1 = 0;     //  состояние - 0
+    
+    // GREEN канал:  RC2 
+    TRISCbits.TRISC2 = 0;   //  выход
+    LATCbits.LATC2 = 0;     // состояние  0
+    
+    // BLUE канал:   RB3
+    TRISBbits.TRISB3 = 0;   //
+    LATBbits.LATB3 = 0;     //  состояние 0
+    
+    // Настройка UART пинов 
+    TRISCbits.TRISC6 = 1;   // RC6  вход UART RX
+    TRISCbits.TRISC7 = 1;   // RC7  вход UART TX
+    
+    //  Дополнительные настройки портов 
+    
+    // Настройка PORTB
+    ADCON1 = 0x0F;          // Все пины PORTB цифровые
+    
+    // Отключаем сравнивающие модули на PORTB
+    CMCON = 0x07;           
+    
+    //  PORTB на выход 
+    TRISB = 0x00;           // Все PORTB  выходы (0-7)
+    TRISBbits.TRISB3 = 0;   //  выход
+    
+    // Настройка PORTC на выход 
+    TRISC = 0x00;           // Все PORTC как выходы (0-7)
+    TRISCbits.TRISC6 = 1;   // RC6  вход 
+    TRISCbits.TRISC7 = 1;   // RC7  вход 
+    
+    // Инициализация портов в 0
+    LATB = 0x00;            // Все выходы PORTB в 0
+    LATC = 0x00;            // Все выходы PORTC в 0
+}
+
