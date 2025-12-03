@@ -1,0 +1,121 @@
+#include <xc.h>
+#include <stdint.h>
+/* Обработчики прерываний */
+void __interrupt(high_priority) ISR_HighPriority(void);
+void __interrupt(low_priority)  ISR_LowPriority(void);
+
+/* Функции UART */
+static void     UART_Initialize(void);
+static void     UART_TransmitChar(char c);
+static void     UART_TransmitString(const char *str);
+static void     UART_TransmitNumber(uint8_t value);
+
+/* Функции Timer2 */
+static void     Timer2_Initialize(void);
+
+/* Функции обработки команд */
+static uint8_t  Command_Parse(const char *str, uint8_t *r, uint8_t *g, uint8_t *b);
+static void     Command_Process(void);
+
+/* Функции инициализации */
+static void     GPIO_Initialize(void);
+static void     Interrupts_Initialize(void);
+
+// =============================================================================
+// ОБРАБОТЧИКИ ПРЕРЫВАНИЙ
+// =============================================================================
+
+/**
+ * @brief   Обработчик прерываний высокого приоритета (UART RX)
+ * 
+ * @details Обрабатывает приём символов по UART. Накапливает символы
+ *          в буфере до получения символа конца строки ('\r' или '\n').
+ *          Обеспечивает защиту от переполнения буфера и обработку
+ *          ошибок кадрирования (FERR) и переполнения (OERR).
+ * 
+ * @note    Высокий приоритет гарантирует, что символы не будут потеряны
+ *          во время выполнения низкоприоритетного обработчика ШИМ.
+ */
+void __interrupt(high_priority) ISR_HighPriority(void) {
+    
+    if (PIR1bits.RCIF && PIE1bits.RCIE) {
+        
+        /* Обработка ошибки переполнения приёмника */
+        if (RCSTAbits.OERR) {
+            RCSTAbits.CREN = 0;     // Сброс приёмника
+            RCSTAbits.CREN = 1;     // Повторное включение
+            return;
+        }
+        
+        /* Обработка ошибки кадрирования */
+        if (RCSTAbits.FERR) {
+            volatile char dummy = RCREG;    // Чтение для сброса флага
+            (void)dummy;                    // Подавление предупреждения
+            return;
+        }
+        
+        char receivedChar = RCREG;
+        
+        /* Обнаружен конец строки */
+        if (receivedChar == '\r' || receivedChar == '\n') {
+            if (g_rxIndex > 0 && !g_lineReady) {
+                g_rxBuffer[g_rxIndex] = '\0';   // Завершение строки
+                g_lineReady = 1;                 // Сигнал основному циклу
+            }
+        }
+        /* Накопление символов в буфере */
+        else {
+            if (g_rxIndex < RX_BUFFER_SIZE - 1 && !g_lineReady) {
+                g_rxBuffer[g_rxIndex++] = receivedChar;
+            }
+        }
+    }
+}
+
+/**
+ * @brief   Обработчик прерываний низкого приоритета (Timer2 — ШИМ)
+ * 
+ * @details Реализует программный трёхканальный ШИМ. Вызывается с частотой
+ *          примерно 5 кГц. Каждые 256 вызовов формируют один полный период
+ *          ШИМ (~20 Гц), что обеспечивает отсутствие видимого мерцания.
+ * 
+ * @note    Алгоритм ШИМ:
+ *          - Счётчик g_pwmCounter циклически увеличивается от 0 до 255
+ *          - Выход включён, пока счётчик меньше заданной скважности
+ *          - При скважности 0 выход всегда выключен
+ *          - При скважности 255 выход почти всегда включён (254/255 периода)
+ */
+void __interrupt(low_priority) ISR_LowPriority(void) {
+    
+    if (PIR1bits.TMR2IF && PIE1bits.TMR2IE) {
+        PIR1bits.TMR2IF = 0;    // Сброс флага прерывания
+        
+        g_pwmCounter++;         // Инкремент с автоматическим переполнением (0-255)
+        
+        /* Формирование ШИМ-сигналов сравнением счётчика со скважностью */
+        LED_RED   = (g_pwmCounter < g_pwmDutyRed)   ? 1 : 0;
+        LED_GREEN = (g_pwmCounter < g_pwmDutyGreen) ? 1 : 0;
+        LED_BLUE  = (g_pwmCounter < g_pwmDutyBlue)  ? 1 : 0;
+    }
+}
+
+// =============================================================================
+// ФУНКЦИИ UART
+// =============================================================================
+
+/**
+ * @brief   Инициализация модуля UART
+ * 
+ * @details Настраивает EUSART для работы на скорости 9600 бод
+ *          при тактовой частоте 20 МГц. Формат: 8 бит данных,
+static void UART_TransmitNumber(uint8_t value) {
+    if (value >= 100) {
+        UART_TransmitChar('0' + value / 100);
+    }
+    if (value >= 10) {
+        UART_TransmitChar('0' + (value / 10) % 10);
+    }
+    UART_TransmitChar('0' + value % 10);
+}
+
+
